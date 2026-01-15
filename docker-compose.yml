@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # Укажите URL внешней базы данных здесь или в .env файле
+      # Формат: postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
+      DATABASE_URL: ${DATABASE_URL}
+      WATA_API_KEY: ${WATA_API_KEY}
+      WATA_SHOP_ID: ${WATA_SHOP_ID}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL}
+

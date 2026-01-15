@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  telegramId String? @unique
+  name      String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id       String    @id @default(uuid())
+  slug     String    @unique // burgers, drinks, etc.
+  name     String
+  products Product[]
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  image       String?
+  price       Float
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  orderItems OrderItem[]
+  productIngredients ProductIngredient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Ingredient {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float
+  type      String   // bun, patty, cheese, etc.
+  productIngredients ProductIngredient[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProductIngredient {
+  id            String     @id @default(uuid())
+  productId     String
+  product       Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId  String
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  selectionType String     @default("multiple") // single, multiple
+  isRequired    Boolean    @default(false)
+  maxQuantity   Int?       // Maximum quantity for multiple selection, null for unlimited
+  sortOrder     Int        @default(0)
+
+  @@unique([productId, ingredientId])
+}
+
+
+model Order {
+  id            String      @id @default(uuid())
+  number        Int         @default(autoincrement())
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  items         OrderItem[]
+  totalAmount   Float
+  status        String      @default("pending") // pending, preparing, ready, completed
+  paymentMethod String      // card, cash
+  paymentStatus String      @default("pending")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model OrderItem {
+  id        String @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float   // Price at time of purchase
+  selectedIngredients String?  // JSON string of selected ingredients
+}
+
