@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { Client } from 'pg';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const client = new Client({
     connectionString: process.env.DATABASE_URL

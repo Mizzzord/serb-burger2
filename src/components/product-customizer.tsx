@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Product, Ingredient } from '@/types';
 import { Button } from './ui/button';
-import { INGREDIENTS } from '@/data/menu';
 import { X, Check, Info } from 'lucide-react';
 import { cn } from '@/components/ui/button';
 
@@ -14,6 +13,12 @@ const getEmojiForCategory = (category: string) => {
     default: return '🍽️';
   }
 };
+
+interface ExtendedIngredient extends Ingredient {
+  selectionType?: 'single' | 'multiple';
+  isRequired?: boolean;
+  maxQuantity?: number | null;
+}
 
 interface ProductCustomizerProps {
   product: Product;
@@ -28,15 +33,16 @@ export const ProductCustomizer: React.FC<ProductCustomizerProps> = ({
   onClose,
   onAddToCart 
 }) => {
-  const [selectedIngredients, setSelectedIngredients] = useState<Ingredient[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<ExtendedIngredient[]>([]);
 
   // Initialize defaults
   useEffect(() => {
-    if (product.baseIngredients) {
-      const defaults = product.baseIngredients
-        .map(id => INGREDIENTS[id])
-        .filter(Boolean);
-      setSelectedIngredients(defaults);
+    if (product.ingredients && Array.isArray(product.ingredients)) {
+      // Select all required ingredients by default
+      // For 'single' selection types, we might want to select the first one if none selected
+      // But for now, let's just select explicitly required ones
+      const initialSelection = product.ingredients.filter((i: ExtendedIngredient) => i.isRequired);
+      setSelectedIngredients(initialSelection);
     } else {
       setSelectedIngredients([]);
     }
@@ -44,43 +50,55 @@ export const ProductCustomizer: React.FC<ProductCustomizerProps> = ({
 
   if (!isOpen) return null;
 
-  const toggleIngredient = (id: string) => {
-    const ing = INGREDIENTS[id];
-    if (!ing) return;
-
-    const isSelected = selectedIngredients.some(i => i.id === id);
+  const toggleIngredient = (ingredient: ExtendedIngredient) => {
+    const isSelected = selectedIngredients.some(i => i.id === ingredient.id);
 
     if (isSelected) {
-      setSelectedIngredients(prev => prev.filter(i => i.id !== id));
+      // Deselecting
+      if (ingredient.isRequired) {
+         // Cannot deselect required ingredient directly if it's the only one? 
+         // For 'single' selection, usually you switch, not deselect.
+         // For 'multiple', if required, maybe can't be empty?
+         // Let's allow deselecting for now, or maybe check conditions.
+         // If it's a radio button (single), we usually don't deselect on click, only switch.
+         if (ingredient.selectionType === 'single') return; 
+         
+         // If multiple and required, we might check if it's the last one of this type?
+         // Simplifying: allow deselecting, maybe show error on Add?
+      }
+      setSelectedIngredients(prev => prev.filter(i => i.id !== ingredient.id));
     } else {
-      if (ing.type === 'bun') {
+      // Selecting
+      if (ingredient.selectionType === 'single') {
+        // If single selection (e.g. bun), replace other ingredients of same type
         setSelectedIngredients(prev => [
-          ...prev.filter(i => i.type !== 'bun'),
-          ing
+          ...prev.filter(i => i.type !== ingredient.type),
+          ingredient
         ]);
       } else {
-        setSelectedIngredients(prev => [...prev, ing]);
+        // Multiple selection
+        // Check max quantity
+        if (ingredient.maxQuantity) {
+            const currentCount = selectedIngredients.filter(i => i.type === ingredient.type).length;
+            if (currentCount >= ingredient.maxQuantity) {
+                // Can't add more
+                return;
+            }
+        }
+        setSelectedIngredients(prev => [...prev, ingredient]);
       }
     }
   };
 
   const currentPrice = product.price + selectedIngredients.reduce((sum, i) => sum + i.price, 0);
 
-  // Group ingredients
-  const allRelevantIngredientIds = Array.from(new Set([
-    ...(product.baseIngredients || []),
-    ...(product.availableIngredients || [])
-  ]));
+  const ingredients = (product.ingredients || []) as ExtendedIngredient[];
+  const hasOptions = ingredients.length > 0;
 
-  const hasOptions = allRelevantIngredientIds.length > 0;
-
-  const ingredientsByType: Record<string, Ingredient[]> = {};
-  allRelevantIngredientIds.forEach(id => {
-    const ing = INGREDIENTS[id];
-    if (ing) {
-      if (!ingredientsByType[ing.type]) ingredientsByType[ing.type] = [];
-      ingredientsByType[ing.type].push(ing);
-    }
+  const ingredientsByType: Record<string, ExtendedIngredient[]> = {};
+  ingredients.forEach(ing => {
+    if (!ingredientsByType[ing.type]) ingredientsByType[ing.type] = [];
+    ingredientsByType[ing.type].push(ing);
   });
 
   const typeLabels: Record<string, string> = {
@@ -135,16 +153,16 @@ export const ProductCustomizer: React.FC<ProductCustomizerProps> = ({
           
           {hasOptions ? (
             <div className="space-y-6">
-              {Object.entries(ingredientsByType).map(([type, ingredients]) => (
+              {Object.entries(ingredientsByType).map(([type, ingredientsGroup]) => (
                 <div key={type}>
                   <h3 className="font-bold text-sm text-gray-900 mb-3 uppercase tracking-wider">{typeLabels[type] || type}</h3>
                   <div className="space-y-2">
-                    {ingredients.map(ing => {
+                    {ingredientsGroup.map(ing => {
                       const isSelected = selectedIngredients.some(i => i.id === ing.id);
                       return (
                         <div 
                           key={ing.id} 
-                          onClick={() => toggleIngredient(ing.id)}
+                          onClick={() => toggleIngredient(ing)}
                           className={cn(
                             "flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer active:scale-[0.99]",
                             isSelected 

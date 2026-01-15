@@ -31,7 +31,7 @@ export default function CategoryManager() {
   // Загрузка категорий
   const loadCategories = async () => {
     try {
-      const response = await fetch('/api/admin/categories');
+      const response = await fetch('/api/admin/categories', { cache: 'no-store' });
       const data = await response.json();
 
       setCategories(data);

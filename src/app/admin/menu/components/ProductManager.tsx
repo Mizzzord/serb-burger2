@@ -66,9 +66,9 @@ export default function ProductManager() {
   const loadData = async () => {
     try {
       const [productsRes, categoriesRes, ingredientsRes] = await Promise.all([
-        fetch('/api/admin/products'),
-        fetch('/api/admin/categories'),
-        fetch('/api/admin/ingredients')
+        fetch('/api/admin/products', { cache: 'no-store' }),
+        fetch('/api/admin/categories', { cache: 'no-store' }),
+        fetch('/api/admin/ingredients', { cache: 'no-store' })
       ]);
 
       const [productsData, categoriesData, ingredientsData] = await Promise.all([

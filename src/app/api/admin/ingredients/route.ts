@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Client } from 'pg';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 // Схема валидации для ингредиента
 const IngredientSchema = z.object({
   name: z.string().min(1, 'Название ингредиента обязательно'),

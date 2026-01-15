@@ -1,28 +1,27 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { INGREDIENTS } from '@/data/menu';
 import { ProductCard } from '@/components/product-card';
 import { ProductCustomizer } from '@/components/product-customizer';
 import { CartDrawer } from '@/components/cart-drawer';
 import { useCartStore } from '@/store/cart-store';
 import { Button } from '@/components/ui/button';
-import { ShoppingBag } from 'lucide-react';
-import { Category, Product, Ingredient } from '@/types';
+import { ShoppingBag, Loader2 } from 'lucide-react';
+import { Product, Ingredient } from '@/types';
 import { cn } from '@/components/ui/button';
 
-const CATEGORIES: { id: Category; label: string }[] = [
-  { id: 'burgers', label: 'Бургеры' },
-  { id: 'drinks', label: 'Напитки' },
-  { id: 'snacks', label: 'Снеки' },
-  { id: 'sauces', label: 'Соусы' },
-];
+interface MenuCategory {
+  id: string;
+  name: string;
+  slug: string;
+  items: Product[];
+}
 
 export default function Home() {
-  const [activeCategory, setActiveCategory] = useState<Category>('burgers');
+  const [categories, setCategories] = useState<MenuCategory[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('');
   const [customizingProduct, setCustomizingProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [menuItems, setMenuItems] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
@@ -32,9 +31,16 @@ export default function Home() {
     setMounted(true);
     const fetchMenu = async () => {
       try {
-        const response = await fetch('/api/menu');
+        const response = await fetch('/api/menu', { cache: 'no-store' });
         const data = await response.json();
-        setMenuItems(data);
+        
+        if (Array.isArray(data)) {
+          setCategories(data);
+          // Set first category as active if none selected
+          if (data.length > 0 && !activeCategory) {
+            setActiveCategory(data[0].slug);
+          }
+        }
       } catch (error) {
         console.error('Failed to fetch menu:', error);
       } finally {
@@ -44,20 +50,27 @@ export default function Home() {
     fetchMenu();
   }, []);
 
-  const filteredProducts = useMemo(() => 
-    menuItems.filter(p => p.category === activeCategory),
-  [activeCategory, menuItems]);
+  const filteredProducts = useMemo(() => {
+    const category = categories.find(c => c.slug === activeCategory);
+    return category ? category.items : [];
+  }, [activeCategory, categories]);
 
   const handleAddToCart = (product: Product, ingredients: Ingredient[]) => {
     addItem(product, ingredients);
     setCustomizingProduct(null);
-    // Optional: Open cart or show toast? 
-    // User flow: "Add to cart" -> Close modal. Maybe show cart drawer briefly or just update counter.
   };
 
   const handleProductClick = (product: Product) => {
     setCustomizingProduct(product);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen pb-28">
@@ -69,18 +82,18 @@ export default function Home() {
       {/* Category Tabs */}
       <div className="sticky top-[61px] z-10 bg-gray-50/95 backdrop-blur pt-2 pb-4 overflow-x-auto no-scrollbar">
         <div className="flex px-4 gap-2">
-          {CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <button
               key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
+              onClick={() => setActiveCategory(cat.slug)}
               className={cn(
                 "px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95",
-                activeCategory === cat.id
+                activeCategory === cat.slug
                   ? "bg-gray-900 text-white shadow-lg shadow-gray-200"
                   : "bg-white text-gray-500 border border-gray-100 hover:bg-gray-100"
               )}
             >
-              {cat.label}
+              {cat.name}
             </button>
           ))}
         </div>

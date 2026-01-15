@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Client } from 'pg';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 // Схема валидации для категории
 const CategorySchema = z.object({
   name: z.string().min(1, 'Название категории обязательно'),

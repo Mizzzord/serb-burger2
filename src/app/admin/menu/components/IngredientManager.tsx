@@ -47,7 +47,7 @@ export default function IngredientManager() {
   // Загрузка ингредиентов
   const loadIngredients = async () => {
     try {
-      const response = await fetch('/api/admin/ingredients');
+      const response = await fetch('/api/admin/ingredients', { cache: 'no-store' });
       const data = await response.json();
 
       setIngredients(data);
